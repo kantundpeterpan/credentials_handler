@@ -74,10 +74,13 @@ def encode_secrets(mapping_file_path, output_env_file):
 
     print(f"Successfully encoded secrets using mapping from {mapping_file_path} and saved to {output_env_file}")
 
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser(description="Encode secrets from JSON files to an .env file for Kestra using a YAML mapping.")
     parser.add_argument("mapping_file", help="Path to the YAML mapping file")
     parser.add_argument("-o", "--output", dest="output_file", default=".env_encoded", help="Path to the output .env file (default: .env_encoded)")
 
     args = parser.parse_args()
     encode_secrets(args.mapping_file, args.output_file)
+
+if __name__ == "__main__":
+    main()
