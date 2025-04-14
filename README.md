@@ -1,7 +1,9 @@
 # `kestra` secret encoder
 
 A commandline too for encodings secrets from JSON files and environment variables into a `.env` file, preparing them for use with Kestra. 
-It leverages a YAML mapping file to define relationships between JSON file keys, environment variables, and desired `SECRET_` environment variable names in the output `.env` file. All values are base64 encoded before being written. This ensures that sensitive information can be managed securely within Kestra workflows.
+It leverages a YAML mapping file to define relationships between JSON file keys, environment variables, and desired `SECRET_` environment variable names in the output `.env` file. 
+
+(see also the [`kestra` documentation](https://kestra.io/docs/how-to-guides/secrets))
 
 ## Features
 
