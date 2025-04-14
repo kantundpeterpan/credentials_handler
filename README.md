@@ -24,7 +24,20 @@ pip install git+https://github.com/kantundpeterpan/kestra_secret_encoder
 ## Usage
 
 ```bash
-kestra_secret_encoder <mapping_file> [-o <output_file>]
+usage: kestra_secret_encoder [-h] [-p PREFIX] [-o OUTPUT_FILE] [--no_encode] mapping_file
+
+Encode secrets from JSON files to an .env file for Kestra using a YAML mapping.
+
+positional arguments:
+  mapping_file          Path to the YAML mapping file
+
+options:
+  -h, --help            show this help message and exit
+  -p PREFIX, --prefix PREFIX
+                        Prefix for the environment variables (default: SECRET_)
+  -o OUTPUT_FILE, --output OUTPUT_FILE
+                        Path to the output .env file (default: .env_encoded)
+  --no_encode           store variables without base64 encoding
 ```
 
 *   `<mapping_file>`: Path to the YAML mapping file that defines the secret mappings.
