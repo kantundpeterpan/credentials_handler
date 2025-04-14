@@ -18,7 +18,7 @@ It leverages a YAML mapping file to define relationships between JSON file keys,
 ## Installation
 
 ```bash
-pip install kestra-secret-encoder
+pip install git+https://github.com/kantundpeterpan/kestra_secret_encoder
 ```
 
 ## Usage
