@@ -2,7 +2,7 @@ files:
   example: "./example.json"
 
 from_env:
-  home: HOME
+  HOME: HOME
 
 example:
   GITHUB_ACCESS_TOKEN: "GITHUB_ACCESS_TOKEN"
