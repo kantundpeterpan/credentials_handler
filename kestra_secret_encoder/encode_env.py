@@ -4,7 +4,7 @@ import argparse
 import yaml
 import os
 
-def encode_secrets(mapping_file_path, output_env_file):
+def encode_secrets(mapping_file_path, output_env_file, mustbase64: bool = True, prefix = "SECRET_"):
     """
     Encodes values from multiple JSON files into base64 and writes them to an .env file
     with the "SECRET_" prefix for use with Kestra, using a multi-level mapping from a YAML configuration.
@@ -55,13 +55,14 @@ def encode_secrets(mapping_file_path, output_env_file):
                     if value is None:
                         print(f"Warning: Environment variable '{env_var}' not found, skipping.")
                         continue
-                encoded_value = base64.b64encode(str(value).encode('utf-8')).decode('utf-8')
-                env_file.write(f"SECRET_{env_key}={encoded_value}\n")
+                    encoded_value = base64.b64encode(str(value).encode('utf-8')).decode('utf-8') if mustbase64 else value
+                    env_file.write(f"{prefix}{env_key}={encoded_value.replace("\n", "\\n")}\n")
                 continue
 
             if section_header not in file_data:
                 print(f"Warning: File header '{section_header}' not found in file data, skipping mappings for this file.")
                 continue
+            
             data = file_data[section_header]
 
             for json_key, env_key in mappings.items():
@@ -69,18 +70,19 @@ def encode_secrets(mapping_file_path, output_env_file):
                     print(f"Warning: Key '{json_key}' not found in JSON data for file header '{section_header}', skipping.")
                     continue
                 value = data[json_key]
-                encoded_value = base64.b64encode(str(value).encode('utf-8')).decode('utf-8')
-                env_file.write(f"SECRET_{env_key}={encoded_value}\n")
+                encoded_value = base64.b64encode(str(value).encode('utf-8')).decode('utf-8') if mustbase64 else value
+                env_file.write(f"{prefix}{env_key}={encoded_value}\n")
 
     print(f"Successfully encoded secrets using mapping from {mapping_file_path} and saved to {output_env_file}")
 
 def main():
     parser = argparse.ArgumentParser(description="Encode secrets from JSON files to an .env file for Kestra using a YAML mapping.")
     parser.add_argument("mapping_file", help="Path to the YAML mapping file")
+    parser.add_argument("-p", "--prefix", dest="prefix", default="SECRET_", help="Prefix for the environment variables (default: SECRET_)")
     parser.add_argument("-o", "--output", dest="output_file", default=".env_encoded", help="Path to the output .env file (default: .env_encoded)")
-
+    parser.add_argument("--no_encode", help="store variables without base64 encoding", action="store_true", dest="no_encode")
     args = parser.parse_args()
-    encode_secrets(args.mapping_file, args.output_file)
+    encode_secrets(args.mapping_file, args.output_file, not args.no_encode, args.prefix)
 
 if __name__ == "__main__":
     main()

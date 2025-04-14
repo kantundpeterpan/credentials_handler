@@ -3,6 +3,7 @@ files:
 
 from_env:
   HOME: HOME
+  PATH: PATH
 
 example:
   GITHUB_ACCESS_TOKEN: "GITHUB_ACCESS_TOKEN"
