@@ -1,0 +1,10 @@
+files:
+  example: "./example.json"
+
+from_env:
+  home: HOME
+
+example:
+  GITHUB_ACCESS_TOKEN: "GITHUB_ACCESS_TOKEN"
+  OPENROUTER_API_KEY: "OPENROUTER_API_KEY"
+
