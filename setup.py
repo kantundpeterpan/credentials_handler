@@ -12,7 +12,7 @@ setup(
     license='GNU',  # Replace with your license
     packages=find_packages(),  # Automatically find your package(s)
     install_requires=[  # List your package's dependencies
-        'pyyaml'
+        'toml'
     ],
 
     entry_points={
