@@ -92,6 +92,7 @@ def encode_secrets_dlt_dest_bigquery(mapping_file_path, secrets_toml_path):
         if section_header not in file_data:
             print(f"Section header '{section_header}' not found, assuming direct mapping.")
             for mapping_key, toml_key in mappings.items():
+                print(toml_key)
                 keys = toml_key.split('__')  # Split TOML key by '__' for nested structure
                 if not set_nested_value(secrets_toml_data, keys, mapping_key):
                     print(f"Warning: TOML key '{toml_key}' not found in secrets.toml, skipping.")
@@ -106,11 +107,9 @@ def encode_secrets_dlt_dest_bigquery(mapping_file_path, secrets_toml_path):
                 continue
             value = data[mapping_key]
             keys = toml_key.split('__')  # Split TOML key by '__' for nested structure
-            try:
-                set_nested_value(secrets_toml_data, keys, value)
-            except Exception as e:
-                print(f"Error setting value for key '{toml_key}': {e}")
-                return
+            if not set_nested_value(secrets_toml_data, keys, value):
+                print(f"Warning: TOML key '{keys}' not found in secrets.toml, skipping.")
+
             
     # Write the updated secrets_toml_data to the output file
     try:
