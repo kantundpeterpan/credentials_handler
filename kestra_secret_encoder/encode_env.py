@@ -60,8 +60,8 @@ def encode_secrets_dlt_dest_bigquery(mapping_file_path, secrets_toml_path):
     def set_nested_value(data, keys, value):
         """Sets a nested value in a dictionary given a list of keys."""
         for key in keys[:-1]:
-            data = data.setdefault(key, {})
-        data[keys[-1]] = value
+            data = data.setdefault(key.lower(), {})
+        data[keys[-1].lower()] = value
 
     # Process from_env section
     if 'from_env' in mapping_config:
