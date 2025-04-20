@@ -1,9 +1,11 @@
 # `kestra` secret encoder
 
-A commandline too for encodings secrets from JSON files and environment variables into a `.env` file, preparing them for use with Kestra. 
+A commandline too for encodings secrets from JSON files and environment variables for use with `docker`, `kestra` and `dlt`.
 It leverages a YAML mapping file to define relationships between JSON file keys, environment variables, and desired `SECRET_` environment variable names in the output `.env` file. 
 
 (see also the [`kestra` documentation](https://kestra.io/docs/how-to-guides/secrets))
+
+This `README` is not yet up-to-date.
 
 ## Features
 
@@ -24,20 +26,26 @@ pip install git+https://github.com/kantundpeterpan/kestra_secret_encoder
 ## Usage
 
 ```bash
-usage: kestra_secret_encoder [-h] [-p PREFIX] [-o OUTPUT_FILE] [--no_encode] mapping_file
+usage: encode_env.py [-h] [-o OUTPUT_FILE] [-p PREFIX] [--secrets_toml SECRETS_TOML] mapping_file {docker,kestra,dlt_dest_bigquery}
 
-Encode secrets from JSON files to an .env file for Kestra using a YAML mapping.
+Encode secrets from JSON files to an .env file for different destinations using a YAML mapping.
 
 positional arguments:
   mapping_file          Path to the YAML mapping file
+  {docker,kestra,dlt_dest_bigquery}
+                        Tool credentials are encoded for
 
 options:
   -h, --help            show this help message and exit
-  -p PREFIX, --prefix PREFIX
-                        Prefix for the environment variables (default: SECRET_)
-  -o OUTPUT_FILE, --output OUTPUT_FILE
-                        Path to the output .env file (default: .env_encoded)
-  --no_encode           store variables without base64 encoding
+  -o, --output OUTPUT_FILE
+                        Path to the output .env file (default: secrets.toml)
+  -p, --prefix PREFIX   Prefix for the environment variables (default: SECRET_)
+
+dlt_dest_bigquery arguments:
+  These arguments are required when target_tool is dlt_dest_bigquery
+
+  --secrets_toml SECRETS_TOML
+                        Path to the secrets.toml file
 ```
 
 *   `<mapping_file>`: Path to the YAML mapping file that defines the secret mappings.
