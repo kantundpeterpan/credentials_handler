@@ -58,10 +58,18 @@ def encode_secrets_dlt_dest_bigquery(mapping_file_path, secrets_toml_path):
                 return
 
     def set_nested_value(data, keys, value):
-        """Sets a nested value in a dictionary given a list of keys."""
+        """Sets a nested value in a dictionary given a list of keys, only if the path exists."""
+        current_data = data
         for key in keys[:-1]:
-            data = data.setdefault(key.lower(), {})
-        data[keys[-1].lower()] = value
+            if isinstance(current_data, dict) and key.lower() in current_data:
+                current_data = current_data[key.lower()]
+            else:
+                return False  # Path does not exist
+        if isinstance(current_data, dict) and keys[-1].lower() in current_data:
+            current_data[keys[-1].lower()] = value
+            return True
+        else:
+            return False
 
     # Process from_env section
     if 'from_env' in mapping_config:
@@ -72,12 +80,10 @@ def encode_secrets_dlt_dest_bigquery(mapping_file_path, secrets_toml_path):
                 continue
 
             keys = toml_key.split('__')  # Split TOML key by '__' for nested structure
-            try:
-                set_nested_value(secrets_toml_data, keys, value)
-            except Exception as e:
-                print(f"Error setting value for key '{toml_key}': {e}")
-                return
-
+            
+            if not set_nested_value(secrets_toml_data, keys, value):
+                print(f"Warning: TOML key '{keys}' not found in secrets.toml, skipping.")
+                
     # Iterate through the YAML mapping and update values in the secrets.toml data
     for section_header, mappings in mapping_config.items():
         if section_header in ['files', 'from_env']:
@@ -87,11 +93,8 @@ def encode_secrets_dlt_dest_bigquery(mapping_file_path, secrets_toml_path):
             print(f"Section header '{section_header}' not found, assuming direct mapping.")
             for mapping_key, toml_key in mappings.items():
                 keys = toml_key.split('__')  # Split TOML key by '__' for nested structure
-                try:
-                    set_nested_value(secrets_toml_data, keys, mapping_key)
-                except Exception as e:
-                    print(f"Error setting value for key '{toml_key}': {e}")
-                    return
+                if not set_nested_value(secrets_toml_data, keys, mapping_key):
+                    print(f"Warning: TOML key '{toml_key}' not found in secrets.toml, skipping.")
             continue
 
 
@@ -182,7 +185,7 @@ def main():
     parser = argparse.ArgumentParser(description="Encode secrets from JSON files to an .env file for different destinations using a YAML mapping.")
     parser.add_argument("mapping_file", help="Path to the YAML mapping file")
     parser.add_argument("target_tool", choices=['docker', 'kestra', 'dlt_dest_bigquery'], help="Tool credentials are encoded for")
-    parser.add_argument("-o", "--output", dest="output_file", default="secrets.toml", help="Path to the output .env file (default: secrets.toml)")
+    parser.add_argument("-o", "--output", dest="output_file", default=".env_encoded", help="Path to the output .env file (default: secrets.toml)")
     parser.add_argument("-p", "--prefix", dest="prefix", default="SECRET_", help="Prefix for the environment variables (default: SECRET_)")
 
     # Conditional arguments for dlt_dest_bigquery
