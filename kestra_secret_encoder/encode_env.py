@@ -44,6 +44,19 @@ def encode_secrets_dlt_dest_bigquery(mapping_file_path, secrets_toml_path):
         print("Error: Neither 'files' nor 'from_env' section found in the YAML configuration.")
         return
 
+    file_data = {}
+    if 'files' in mapping_config:
+        for file_header, file_path in mapping_config['files'].items():
+            try:
+                with open(file_path, 'r') as f:
+                    file_data[file_header] = json.load(f)
+            except FileNotFoundError:
+                print(f"Error: File not found: {file_path}")
+                return
+            except json.JSONDecodeError:
+                print(f"Error: Invalid JSON in file: {file_path}")
+                return
+
     def set_nested_value(data, keys, value):
         """Sets a nested value in a dictionary given a list of keys."""
         for key in keys[:-1]:
@@ -70,10 +83,28 @@ def encode_secrets_dlt_dest_bigquery(mapping_file_path, secrets_toml_path):
         if section_header in ['files', 'from_env']:
             continue  # Skip 'files' and 'from_env' sections
 
+        if section_header not in file_data:
+            print(f"Section header '{section_header}' not found, assuming direct mapping.")
+            for mapping_key, toml_key in mappings.items():
+                keys = toml_key.split('__')  # Split TOML key by '__' for nested structure
+                try:
+                    set_nested_value(secrets_toml_data, keys, mapping_key)
+                except Exception as e:
+                    print(f"Error setting value for key '{toml_key}': {e}")
+                    return
+            continue
+
+
+        data = file_data[section_header]
+
         for mapping_key, toml_key in mappings.items():
+            if mapping_key not in data:
+                print(f"Warning: Key '{mapping_key}' not found in JSON data for file header '{section_header}', skipping.")
+                continue
+            value = data[mapping_key]
             keys = toml_key.split('__')  # Split TOML key by '__' for nested structure
             try:
-                set_nested_value(secrets_toml_data, keys, mapping_key)
+                set_nested_value(secrets_toml_data, keys, value)
             except Exception as e:
                 print(f"Error setting value for key '{toml_key}': {e}")
                 return
