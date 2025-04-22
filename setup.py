@@ -17,7 +17,7 @@ setup(
 
     entry_points={
         'console_scripts': [
-            'kestra_secret_encoder = kestra_secret_encoder:main',
+            'credentials_handler = credentials_handler:main',
         ],
     },
 )
