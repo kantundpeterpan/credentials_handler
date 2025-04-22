@@ -1,4 +1,4 @@
-# kestra-secret-encoder
+# credentials-handler 
 
 This Python script encodes secrets from JSON files or environment variables into an `.env` file or updates a `secrets.toml` file, using a YAML mapping configuration. It supports different target tools such as Docker, Kestra, and `dlt` with BigQuery destination.
 
@@ -12,36 +12,38 @@ This Python script encodes secrets from JSON files or environment variables into
 
 ## Requirements
 
--   Python 3.6+
--   PyYAML
 -   toml (for `dlt_dest_bigquery` target)
-
-```bash
-pip install pyyaml toml
-```
 
 ## Installation
 
-Clone the repository:
-
 ```bash
-git clone <repository_url>
-cd kestra-secret-encoder
+pip install 
 ```
 
 ## Usage
 
 ```bash
-python encode_env.py <mapping_file> <target_tool> [-o <output_file>] [-p <prefix>] [--secrets_toml <secrets_toml_file>]
+usage: encode_env.py [-h] [-o OUTPUT_FILE] [-p PREFIX] [--secrets_toml SECRETS_TOML] mapping_file {docker,kestra,dlt_dest_bigquery}
+
+Encode secrets from JSON files or environment variables to an .env file or TOML file for different destinations using a YAML mapping.
+
+positional arguments:
+  mapping_file          Path to the YAML mapping file. This file defines how to map JSON file contents and environment variables to environment variables or TOML keys.
+  {docker,kestra,dlt_dest_bigquery}
+                        Tool for which credentials are encoded.
+
+options:
+  -h, --help            show this help message and exit
+  -o, --output OUTPUT_FILE
+                        Path to the output .env file (used for Docker and Kestra, default: .env_encoded).
+  -p, --prefix PREFIX   Prefix for the environment variables (used for Docker, default: SECRET_).
+
+dlt_dest_bigquery arguments:
+  These arguments are required when target_tool is dlt_dest_bigquery
+
+  --secrets_toml SECRETS_TOML
+                        Path to the secrets.toml file to be modified
 ```
-
-### Arguments
-
--   `<mapping_file>`: Path to the YAML mapping file.
--   `<target_tool>`: Target tool for which the secrets are encoded. Available options: `docker`, `kestra`, `dlt_dest_bigquery`.
--   `-o, --output <output_file>`: (Optional) Path to the output `.env` file (default: `.env_encoded`).
--   `-p, --prefix <prefix>`: (Optional) Prefix for the environment variables (default: `SECRET_`).
--   `--secrets_toml <secrets_toml_file>`: (Required for `dlt_dest_bigquery`) Path to the `secrets.toml` file.
 
 ### Target Tool Specific Usage
 
