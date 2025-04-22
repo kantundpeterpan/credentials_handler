@@ -1,199 +1,174 @@
-# `kestra` secret encoder
+# kestra-secret-encoder
 
-A commandline too for encodings secrets from JSON files and environment variables for use with `docker`, `kestra` and `dlt`.
-It leverages a YAML mapping file to define relationships between JSON file keys, environment variables, and desired `SECRET_` environment variable names in the output `.env` file. 
-
-(see also the [`kestra` documentation](https://kestra.io/docs/how-to-guides/secrets))
-
-This `README` is not yet up-to-date.
+This Python script encodes secrets from JSON files or environment variables into an `.env` file or updates a `secrets.toml` file, using a YAML mapping configuration. It supports different target tools such as Docker, Kestra, and `dlt` with BigQuery destination.
 
 ## Features
 
-*   **YAML Configuration:** Utilizes a YAML file to define mappings between JSON file keys, environment variables and Kestra secret names, providing a flexible and centralized configuration mechanism.
-*   **Multi-File Support:** Reads secrets from multiple JSON files, accommodating complex configurations spread across different files.
-*   **Environment Variable Support:** Can read secrets directly from environment variables, useful for injecting credentials or configuration parameters directly into the Kestra environment.
-*   **Base64 Encoding:** Encodes all secret values using base64 encoding for secure storage in the `.env` file.
-*   **Kestra Compatibility:** Generates a `.env` file with the `SECRET_` prefix as required by Kestra for secret variables.
-*   **Error Handling:** Includes comprehensive error handling for scenarios such as file not found, invalid JSON/YAML, and missing keys or environment variables.
-*   **Command-Line Interface:** Offers a command-line interface for easy execution and integration into deployment pipelines.
+-   **Flexible Mapping:** Uses a YAML file to map JSON file keys or environment variables to environment variable names or `secrets.toml` keys.
+-   **Multiple Target Tools:** Supports encoding secrets for Docker, Kestra, and `dlt` BigQuery destination.
+-   **Base64 Encoding (Optional):** Encodes values using Base64 encoding (for Kestra).
+-   **TOML file update (dlt_dest_bigquery):** Updates an existing `secrets.toml` file with secrets mapped from files or environment variables.
+-   **Error Handling:** Provides informative error messages for missing files, invalid YAML/JSON, and missing environment variables.
+
+## Requirements
+
+-   Python 3.6+
+-   PyYAML
+-   toml (for `dlt_dest_bigquery` target)
+
+```bash
+pip install pyyaml toml
+```
 
 ## Installation
 
+Clone the repository:
+
 ```bash
-pip install git+https://github.com/kantundpeterpan/kestra_secret_encoder
+git clone <repository_url>
+cd kestra-secret-encoder
 ```
 
 ## Usage
 
 ```bash
-usage: encode_env.py [-h] [-o OUTPUT_FILE] [-p PREFIX] [--secrets_toml SECRETS_TOML] mapping_file {docker,kestra,dlt_dest_bigquery}
-
-Encode secrets from JSON files to an .env file for different destinations using a YAML mapping.
-
-positional arguments:
-  mapping_file          Path to the YAML mapping file
-  {docker,kestra,dlt_dest_bigquery}
-                        Tool credentials are encoded for
-
-options:
-  -h, --help            show this help message and exit
-  -o, --output OUTPUT_FILE
-                        Path to the output .env file (default: secrets.toml)
-  -p, --prefix PREFIX   Prefix for the environment variables (default: SECRET_)
-
-dlt_dest_bigquery arguments:
-  These arguments are required when target_tool is dlt_dest_bigquery
-
-  --secrets_toml SECRETS_TOML
-                        Path to the secrets.toml file
+python encode_env.py <mapping_file> <target_tool> [-o <output_file>] [-p <prefix>] [--secrets_toml <secrets_toml_file>]
 ```
 
-*   `<mapping_file>`: Path to the YAML mapping file that defines the secret mappings.
-*   `-o <output_file>` or `--output <output_file>`: (Optional) Path to the output `.env` file. Defaults to `.env_encoded`.
+### Arguments
 
-## Use in `docker-compose.yml`
+-   `<mapping_file>`: Path to the YAML mapping file.
+-   `<target_tool>`: Target tool for which the secrets are encoded. Available options: `docker`, `kestra`, `dlt_dest_bigquery`.
+-   `-o, --output <output_file>`: (Optional) Path to the output `.env` file (default: `.env_encoded`).
+-   `-p, --prefix <prefix>`: (Optional) Prefix for the environment variables (default: `SECRET_`).
+-   `--secrets_toml <secrets_toml_file>`: (Required for `dlt_dest_bigquery`) Path to the `secrets.toml` file.
 
-```yaml
-services:
-  kestra:
-    ...
-    env_file: ".env_encode"
-    ...
+### Target Tool Specific Usage
+
+#### Docker
+
+```bash
+python encode_env.py mapping.yaml docker -o .env -p DOCKER_SECRET_
 ```
 
-## YAML Mapping File Format
+This command will read the `mapping.yaml` file, encode the secrets, and save them to a `.env` file with the prefix `DOCKER_SECRET_`.
 
-The YAML mapping file provides the schema on how secrets are extracted from JSON files and environment variables, and how they are mapped to `SECRET_` variables in the output `.env` file.
+#### Kestra
 
-The YAML file can contain two primary top-level sections: `files` and `from_env`.
+```bash
+python encode_env.py mapping.yaml kestra -o kestra.env
+```
 
-### `files` Section
+This command will read the `mapping.yaml` file, encode the secrets using Base64 encoding, and save them to `kestra.env` with the prefix `SECRET_`.
 
-The `files` section specifies the paths to JSON files to be processed. Keys within this section serve as references for the mapping sections.
+#### dlt with BigQuery destination
+
+```bash
+python encode_env.py mapping.yaml dlt_dest_bigquery --secrets_toml ./secrets.toml
+```
+
+This command will read the `mapping.yaml` and `./secrets.toml` file, map and update the secrets into `./secrets.toml` based on the mapping and save the updated file.
+
+### YAML Mapping File Format
+
+The YAML mapping file defines the mapping between JSON file keys or environment variables and environment variable names (for Docker, Kestra) or `secrets.toml` keys (for dlt).
+
+#### Example for Docker/Kestra
 
 ```yaml
 files:
-  my_app_config: /path/to/my_app_config.json
-  db_credentials: /path/to/db_credentials.json
-```
+  my_json_file: path/to/my_json_file.json
+  other_json_file: path/to/other_json_file.json
 
-### Mapping Sections
-
-Each section (except `files` and `from_env`) in the YAML file correlates to a file header defined in the `files` section. The keys in these sections correspond to keys within the respective JSON file, and the values are the desired `SECRET_` environment variable names.
-
-```yaml
-my_app_config:
+my_json_file:
   api_key: API_KEY
-  app_name: APP_NAME
-  
-db_credentials:
-  username: DB_USERNAME
-  password: DB_PASSWORD
-```
+  username: USERNAME
 
-### `from_env` Section
+other_json_file:
+  password: PASSWORD
 
-The `from_env` section establishes mappings from environment variables to Kestra secret names. Keys in this section represent environment variable names, and values specify the desired `SECRET_` environment variable names.
-
-```yaml
 from_env:
-  MY_CUSTOM_SECRET: CUSTOM_SECRET
-  ANOTHER_SECRET: ANOTHER_SECRET
+  MY_ENV_VAR: ENV_VAR_KEY
 ```
 
-### Example YAML Mapping File
+-   **`files`**:  A dictionary mapping file headers to file paths. Each file will be loaded as a JSON object.
+-   **`from_env`**: A dictionary mapping environment variable names to environment variable keys (or `secrets.toml` keys).
+-   Other sections represent the file headers defined in the `files` section. Under each file header, a dictionary maps JSON keys to environment variable keys (or `secrets.toml` keys).
+
+#### Example for dlt with BigQuery destination
 
 ```yaml
 files:
-  app_config: config/app_config.json
-  db: secrets/database.json
+  credentials: path/to/google_credentials.json
 
-app_config:
-  api_key: APP_API_KEY
-  log_level: LOG_LEVEL
-
-db:
-  username: DB_USER
-  password: DB_PASSWORD
+credentials:
+  client_id: destination__bigquery__credentials__client_id
+  private_key: destination__bigquery__credentials__private_key
 
 from_env:
-  EXTERNAL_API_KEY: EXTERNAL_API
+  GOOGLE_PROJECT_ID: destination__bigquery__project_id
 ```
 
-In this example:
+-   **`files`**:  A dictionary mapping file headers to file paths. Each file will be loaded as a JSON object.
+-   **`from_env`**: A dictionary mapping environment variable names to `secrets.toml` keys.
+-   Other sections represent the file headers defined in the `files` section. Under each file header, a dictionary maps JSON keys to `secrets.toml` keys.  Use double underscore (`__`) to represent nested TOML structures.
 
-*   `app_config.json` will be read, and the values associated with keys `api_key` and `log_level` will be encoded and stored as `SECRET_APP_API_KEY` and `SECRET_LOG_LEVEL` in the `.env` file, respectively.
-*   `database.json` will be read, and the values associated with keys `username` and `password` will be encoded and stored as `SECRET_DB_USER` and `SECRET_DB_PASSWORD` in the `.env` file.
-*   The value of the environment variable `EXTERNAL_API_KEY` will be encoded and stored as `SECRET_EXTERNAL_API` in the `.env` file.
+**Note:**
+-   The `dlt_dest_bigquery` target modifies `secrets.toml` in place, so back up the file before running.
+-   The `dlt_dest_bigquery` target does not create an output .env file
 
-## Example JSON Files
+### JSON File Format
 
-**config/app_config.json:**
+The JSON files specified in the YAML mapping file should contain key-value pairs that need to be encoded.
+
+Example:
 
 ```json
 {
-  "api_key": "your_api_key_here",
-  "log_level": "INFO"
+  "api_key": "your_api_key",
+  "username": "your_username"
 }
 ```
 
-**secrets/database.json:**
+### secrets.toml File Format (for `dlt_dest_bigquery`)
 
-```json
-{
-  "username": "db_user",
-  "password": "db_password"
-}
+The `secrets.toml` file should be a valid TOML file. The script will update the existing values based on the mapping defined in the YAML file. The script only updates the values. It will not generate the file or create keys, so the keys you wish to update must already exist in the secrets.toml file.
+
+Example:
+
+```toml
+[destination.bigquery.credentials]
+client_id = "old_client_id"
+private_key = "old_private_key"
+
+[destination.bigquery]
+project_id = "old_project_id"
 ```
 
-## Example Usage
+### Environment Variables
 
-1.  Create the YAML mapping file (e.g., `mapping.yaml`) as described above.
-2.  Create the JSON files referenced in the mapping file (e.g., `config/app_config.json` and `secrets/database.json`).
-3.  Set any environment variables referenced in the `from_env` section of the mapping file.  For example:
-
-    ```bash
-    export EXTERNAL_API_KEY="some_external_api_key"
-    ```
-
-4.  Run the script:
-
-    ```bash
-    python encode_env.py mapping.yaml -o .env
-    ```
-
-This generates a `.env` file containing base64 encoded secrets.
-
-```
-SECRET_APP_API_KEY=eW91cl9hcGlfa2V5X2hlcmU=
-SECRET_LOG_LEVEL=SU5GTw==
-SECRET_DB_USER=ZGJfdXNlcg==
-SECRET_DB_PASSWORD=ZGJfcGFzc3dvcmQ=
-SECRET_EXTERNAL_API=c29tZV9leHRlcm5hbF9hcGlfa2V5
-```
+When using the `from_env` section in the YAML file, ensure that the specified environment variables are set before running the script.
 
 ## Error Handling
 
-The script includes error handling for the following:
+The script provides the following error messages:
 
-*   **Mapping file not found:**  If the specified YAML mapping file does not exist.
-*   **Invalid YAML:** If the YAML mapping file contains invalid YAML syntax.
-*   **File not found:** If any of the JSON files specified in the mapping file do not exist.
-*   **Invalid JSON:** If any of the JSON files contain invalid JSON syntax.
-*   **Missing key:** If a key specified in the mapping file is not found in the corresponding JSON data.
-*   **Missing Environment Variable:** If an environment variable specified in the `from_env` section is not found in the environment.
-
-In case of an error, the script prints an error message to the console and exits. Warnings are shown for non-critical issues like missing environment variables or JSON keys.
-
-## Contributing
-
-Contributions are welcome! Please submit a pull request with your changes.
-*   **Invalid JSON:** If any of the JSON files contain invalid JSON syntax.
-*   **Missing key:** If a key specified in the mapping file is not found in the corresponding JSON data.
-*   **Missing Environment Variable:** If an environment variable specified in the `from_env` section is not found in the environment.
-
-In case of an error, the script prints an error message to the console and exits. Warnings are shown for non-critical issues like missing environment variables or JSON keys.
+-   `Error: Mapping file not found`: If the specified YAML mapping file does not exist.
+-   `Error: Invalid YAML in mapping file`: If the YAML mapping file is not a valid YAML file.
+-   `Error: Neither 'files' nor 'from_env' section not found in the YAML configuration.`: If neither `files` nor `from_env` is defined in the YAML file
+-   `Error: File not found`: If a JSON file specified in the YAML mapping file does not exist.
+-   `Error: Invalid JSON in file`: If a JSON file specified in the YAML mapping file is not a valid JSON file.
+-   `Warning: Environment variable '{env_var}' not found, skipping.`: If an environment variable specified in the YAML mapping file is not set.
+-   `Warning: File header '{section_header}' not found in file data, skipping mappings for this file.`: If the section header is not within the list of files defined within the yaml file
+-   `Warning: Key '{json_key}' not found in JSON data for file header '{section_header}', skipping.`: If a json key specified in the YAML mapping file is not set.
+-   `Error: secrets.toml file not found`: If the specified secrets.toml file does not exist.
+-   `Error: Invalid TOML in secrets.toml file`: If the specified secrets.toml file is not a valid TOML file.
+-   `Warning: TOML key '{toml_key}' not found in secrets.toml, skipping.`: If a toml key specified in the YAML mapping file is not found in the secrets.toml file.
 
 ## Contributing
 
-Contributions are welcome! Please submit a pull request with your changes.
+Contributions are welcome! Please feel free to submit pull requests or open issues.
+
+## License
+
+[MIT License](LICENSE)

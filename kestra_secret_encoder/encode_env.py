@@ -6,9 +6,11 @@ import os
 import toml
 
 def encode_secrets_docker(mapping_file_path, output_env_file, prefix):
+    """Encodes secrets for Docker, writing them to an .env file with a given prefix."""
     process_secrets(mapping_file_path, output_env_file, prefix, False)
 
 def encode_secrets_kestra(mapping_file_path, output_env_file):
+    """Encodes secrets for Kestra, writing them to an .env file with the prefix 'SECRET_' and base64 encoding."""
     process_secrets(mapping_file_path, output_env_file, "SECRET_", True)
 
 def encode_secrets_dlt_dest_bigquery(mapping_file_path, secrets_toml_path):
@@ -121,6 +123,7 @@ def encode_secrets_dlt_dest_bigquery(mapping_file_path, secrets_toml_path):
 
 
 def process_secrets(mapping_file_path, output_env_file, prefix, mustbase64):
+    """Processes secrets based on a YAML mapping file, writing them to an .env file."""
     try:
         with open(mapping_file_path, 'r') as f:
             config = yaml.safe_load(f)
@@ -181,15 +184,15 @@ def process_secrets(mapping_file_path, output_env_file, prefix, mustbase64):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Encode secrets from JSON files to an .env file for different destinations using a YAML mapping.")
-    parser.add_argument("mapping_file", help="Path to the YAML mapping file")
-    parser.add_argument("target_tool", choices=['docker', 'kestra', 'dlt_dest_bigquery'], help="Tool credentials are encoded for")
-    parser.add_argument("-o", "--output", dest="output_file", default=".env_encoded", help="Path to the output .env file (default: secrets.toml)")
-    parser.add_argument("-p", "--prefix", dest="prefix", default="SECRET_", help="Prefix for the environment variables (default: SECRET_)")
+    parser = argparse.ArgumentParser(description="Encode secrets from JSON files or environment variables to an .env file or TOML file for different destinations using a YAML mapping.")
+    parser.add_argument("mapping_file", help="Path to the YAML mapping file.  This file defines how to map JSON file contents and environment variables to environment variables or TOML keys.")
+    parser.add_argument("target_tool", choices=['docker', 'kestra', 'dlt_dest_bigquery'], help="Tool for which credentials are encoded.")
+    parser.add_argument("-o", "--output", dest="output_file", default=".env_encoded", help="Path to the output .env file (used for Docker and Kestra, default: .env_encoded).")
+    parser.add_argument("-p", "--prefix", dest="prefix", default="SECRET_", help="Prefix for the environment variables (used for Docker, default: SECRET_).")
 
     # Conditional arguments for dlt_dest_bigquery
     group = parser.add_argument_group('dlt_dest_bigquery arguments', 'These arguments are required when target_tool is dlt_dest_bigquery')
-    group.add_argument("--secrets_toml", dest="secrets_toml", help="Path to the secrets.toml file", required=False)
+    group.add_argument("--secrets_toml", dest="secrets_toml", help="Path to the secrets.toml file to be modified", required=False)
 
 
     args = parser.parse_args()
