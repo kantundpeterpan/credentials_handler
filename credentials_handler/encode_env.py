@@ -13,6 +13,10 @@ def encode_secrets_kestra(mapping_file_path, output_env_file):
     """Encodes secrets for Kestra, writing them to an .env file with the prefix 'SECRET_' and base64 encoding."""
     process_secrets(mapping_file_path, output_env_file, "SECRET_", True)
 
+def export_to_env(mapping_file_path, prefix):
+    """Prints secrets to stdout, prefixed for Docker."""
+    process_secrets_stdout(mapping_file_path, prefix, False)
+
 def encode_secrets_dlt_dest_bigquery(mapping_file_path, secrets_toml_path):
     """
     Encodes secrets for dlt_dest_bigquery by reading a secrets.toml file,
@@ -23,7 +27,7 @@ def encode_secrets_dlt_dest_bigquery(mapping_file_path, secrets_toml_path):
     try:
         with open(secrets_toml_path, 'r') as f:
             secrets_toml_data = toml.load(f)
-            
+
     except FileNotFoundError:
         print(f"Error: secrets.toml file not found: {secrets_toml_path}")
         return
@@ -182,11 +186,75 @@ def process_secrets(mapping_file_path, output_env_file, prefix, mustbase64):
 
     print(f"Successfully encoded secrets using mapping from {mapping_file_path} and saved to {output_env_file}")
 
+import logging
+
+def process_secrets_stdout(mapping_file_path, prefix, mustbase64):
+    """Processes secrets based on a YAML mapping file, printing to stdout."""
+    logging.basicConfig(level=logging.WARNING)
+
+    try:
+        with open(mapping_file_path, 'r') as f:
+            config = yaml.safe_load(f)
+    except FileNotFoundError:
+        print(f"Error: Mapping file not found: {mapping_file_path}")
+        return
+    except yaml.YAMLError as e:
+        print(f"Error: Invalid YAML in mapping file: {mapping_file_path}\n{e}")
+        return
+
+    if 'files' not in config and 'from_env' not in config:
+        print("Error: Neither 'files' nor 'from_env' section not found in the YAML configuration.")
+        return
+
+    if 'files' in config:
+        file_data = {}
+        for file_header, file_path in config['files'].items():
+            try:
+                with open(file_path, 'r') as f:
+                    file_data[file_header] = json.load(f)
+            except FileNotFoundError:
+                print(f"Error: File not found: {file_path}")
+                return
+            except json.JSONDecodeError:
+                print(f"Error: Invalid JSON in file: {file_path}")
+                return
+
+    for section_header, mappings in config.items():
+        if section_header == 'files':
+            continue
+
+        if section_header == 'from_env':
+            for env_var, env_key in mappings.items():
+                value = os.environ.get(env_var)
+                if value is None:
+                    logging.warning(f"Environment variable '{env_var}' not found, skipping.")
+                    continue
+                encoded_value = base64.b64encode(str(value).encode('utf-8')).decode('utf-8') if mustbase64 else value
+                print(f"{prefix}{env_key}={encoded_value.replace('\n', '\\n')}")
+            continue
+
+        if section_header not in file_data:
+            logging.warning(f"File header '{section_header}' not found in file data, skipping mappings for this file.")
+            continue
+
+        data = file_data[section_header]
+
+        for json_key, env_key in mappings.items():
+            if json_key not in data:
+                logging.warning(f"Key '{json_key}' not found in JSON data for file header '{section_header}', skipping.")
+                continue
+            value = data[json_key]
+            encoded_value = base64.b64encode(str(value).encode('utf-8')).decode('utf-8') if mustbase64 else value
+            print(f"export {prefix}{env_key}='{encoded_value.replace('\n', '\\n')}'")
+           
+
+    # print(f"Successfully encoded secrets using mapping from {mapping_file_path} and printed to stdout.")
+
 
 def main():
     parser = argparse.ArgumentParser(description="Encode secrets from JSON files or environment variables to an .env file or TOML file for different destinations using a YAML mapping.")
     parser.add_argument("mapping_file", help="Path to the YAML mapping file.  This file defines how to map JSON file contents and environment variables to environment variables or TOML keys.")
-    parser.add_argument("target_tool", choices=['docker', 'kestra', 'dlt_dest_bigquery'], help="Tool for which credentials are encoded.")
+    parser.add_argument("target_tool", choices=['docker', 'kestra', 'dlt_dest_bigquery', 'export_to_env'], help="Tool for which credentials are encoded.")
     parser.add_argument("-o", "--output", dest="output_file", default=".env_encoded", help="Path to the output .env file (used for Docker and Kestra, default: .env_encoded).")
     parser.add_argument("-p", "--prefix", dest="prefix", default="SECRET_", help="Prefix for the environment variables (used for Docker, default: SECRET_).")
 
@@ -207,6 +275,8 @@ def main():
         if not (args.secrets_toml):
             parser.error("When target_tool is dlt_dest_bigquery, --secrets_toml is required.")
         encode_secrets_dlt_dest_bigquery(args.mapping_file, args.secrets_toml) #Even though not needed, required by the function interface
+    elif args.target_tool == 'export_to_env':
+        export_to_env(args.mapping_file, args.prefix)
 
 
 if __name__ == "__main__":
